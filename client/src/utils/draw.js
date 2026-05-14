@@ -1,0 +1,2 @@
+drawLine()
+clearCanvas()
