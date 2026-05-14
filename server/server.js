@@ -23,35 +23,49 @@ const io = new Server(server, {
   },
 });
 
-
+const roomStrokes = {};
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
  
   socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`${socket.id} joined ${roomId}`);
 
-  //Put this user inside a room
-  socket.join(roomId);
-
-  console.log(`${socket.id} joined ${roomId}`);
-
+    // ✅ FIXED: only send if there are actual strokes (not just empty groups)
+    const existing = roomStrokes[roomId]?.filter((g) => g.length > 0);
+    if (existing && existing.length > 0) {
+      console.log("Sending canvas-state, groups:", existing.length);
+      socket.emit("canvas-state", { strokes: existing });
+    }
 });
 
-  socket.on("draw", ({ roomId, stroke }) => {
+socket.on("draw", ({ roomId, stroke }) => {
+  if (!roomStrokes[roomId]) roomStrokes[roomId] = [];
+  const groups = roomStrokes[roomId];
 
-  socket.to(roomId).emit("draw", {
-    stroke,
+  // ✅ Only push a new group if there isn't one already open
+  if (groups.length === 0) groups.push([]);
+  groups[groups.length - 1].push(stroke);
+
+  socket.to(roomId).emit("draw", { stroke });
+});
+
+socket.on("stroke-end", ({ roomId }) => {
+    // Signal that current stroke group is complete — start a new group next draw
+    if (roomStrokes[roomId]) {
+      roomStrokes[roomId].push([]); // new empty group ready
+    }
   });
 
-});
-
 socket.on("clear-canvas", (roomId) => {
-
+  roomStrokes[roomId] = []; 
   socket.to(roomId).emit("clear-canvas");
 
 });
 
 socket.on("undo", ({ roomId, updatedStrokes }) => {
+   roomStrokes[roomId] = updatedStrokes;
   socket.to(roomId).emit("undo", {
     updatedStrokes,
   });
