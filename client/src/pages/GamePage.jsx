@@ -3,6 +3,7 @@ import { socket } from "../socket/socket";
 import CanvasBoard from "../components/CanvasBoard";
 import { useLocation, useParams } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
+import RoundEndOverlay from "../components/RoundEndOverlay";
 
 function GamePage() {
 const { roomId } = useParams();
@@ -17,6 +18,7 @@ const [wordOptions, setWordOptions] = useState([]);
 const [maskedWord, setMaskedWord] = useState("");
 const [actualWord, setActualWord] = useState("");
 const [gameStarted, setGameStarted] = useState(false);
+const [roundEndData, setRoundEndData] = useState(null); 
 
  const [messages, setMessages] = useState([]);
 
@@ -90,6 +92,10 @@ socket.on("round-end", ({ word }) => {
   setActualWord("");
   setGameStarted(false);
   setMessages(prev => [...prev, { username: "🎮 Game", text: `Round over! The word was: ${word}` }]);
+  setRoundEndData({ word, players: [...players] }); // 👈 snapshot scores at this moment
+
+  // Auto-dismiss after 3s (matches server's setTimeout before next turn)
+  setTimeout(() => setRoundEndData(null), 7000);
 });
 
     return () => {
@@ -216,7 +222,7 @@ socket.on("round-end", ({ word }) => {
           )}
           {
             gameStarted && (
-              <CanvasBoard roomId={roomId} />
+              <CanvasBoard roomId={roomId}  isDrawing={isDrawing} />
             )
           }
           
@@ -228,6 +234,12 @@ socket.on("round-end", ({ word }) => {
               <ChatBox roomId={roomId} username={username}  messages={messages}/>
             </div>
       </div>
+      {roundEndData && (
+  <RoundEndOverlay
+    word={roundEndData.word}
+    players={roundEndData.players}
+  />
+)}
     </div>
   );
 }
