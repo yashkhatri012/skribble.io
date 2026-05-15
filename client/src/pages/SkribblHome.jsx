@@ -16,7 +16,7 @@ const SkribblHome = () => {
     const newRoomId = generateRandomId();
     console.log(`Creating room: ${newRoomId} for user: ${username}`);
     
-    navigate(`/game/${newRoomId}`);
+    navigate(`/game/${newRoomId}` , { state: { username } });
 
     
   };
@@ -24,7 +24,7 @@ const SkribblHome = () => {
   const handleJoinRoom = (e) => {
     e.preventDefault();
     if (!username || !roomId) return alert("Enter username and Room ID!");
-    navigate(`/game/${roomId}`);
+    navigate(`/game/${roomId}`, { state: { username } });
     console.log(`Joining room: ${roomId} as user: ${username}`);
   };
 
