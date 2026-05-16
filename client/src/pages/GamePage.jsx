@@ -4,6 +4,7 @@ import CanvasBoard from "../components/CanvasBoard";
 import { useLocation, useParams } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
 import RoundEndOverlay from "../components/RoundEndOverlay";
+import GameOverScreen from "../components/GameOverScreen";
 
 function GamePage() {
 const { roomId } = useParams();
@@ -25,6 +26,8 @@ const [roundEndData, setRoundEndData] = useState(null);
 const isHost = players.find((p) => p.id === socket.id)?.isHost;
 const isDrawing = currentDrawer?.id === socket.id;
 const [timeRemaining, setTimeRemaining] = useState(60);
+const [roundInfo, setRoundInfo] = useState(null);
+const [gameOver, setGameOver] = useState(null); 
 
   useEffect(() => {
     socket.on("message", ({ username, text }) => {
@@ -62,6 +65,7 @@ const [timeRemaining, setTimeRemaining] = useState(60);
     socket.on("game-started", ({ drawer }) => {
        console.log("game started, drawer:", drawer);
   setGameStarted(true);
+  setGameOver(null); 
   setCurrentDrawer(drawer);
 });
 
@@ -86,6 +90,12 @@ socket.on("correct-guess", ({ username }) => {
 socket.on("timer", ({ timeRemaining }) => {
   setTimeRemaining(timeRemaining);
 });
+socket.on("round-info", ({ currentRound, totalRounds }) => {
+  setRoundInfo({ currentRound, totalRounds });
+});
+socket.on("game-over", ({ players }) => {
+  setGameOver({ players });
+});
 
 socket.on("round-end", ({ word }) => {
   setMaskedWord("");
@@ -95,7 +105,7 @@ socket.on("round-end", ({ word }) => {
   setRoundEndData({ word, players: [...players] }); // 👈 snapshot scores at this moment
 
   // Auto-dismiss after 3s (matches server's setTimeout before next turn)
-  setTimeout(() => setRoundEndData(null), 7000);
+  setTimeout(() => setRoundEndData(null), 3000);
 });
 
     return () => {
@@ -108,6 +118,8 @@ socket.on("round-end", ({ word }) => {
       socket.off("masked-word");
       socket.off("actual-word");
       socket.off("correct-guess");
+      socket.off("round-info");
+      socket.off("game-over");
       socket.disconnect();
     };
 
@@ -220,6 +232,11 @@ socket.on("round-end", ({ word }) => {
           </div>
             
           )}
+          {roundInfo && gameStarted && (
+            <p className="text-zinc-400 text-sm font-semibold tracking-wide">
+              Round {roundInfo.currentRound} of {roundInfo.totalRounds}
+            </p>
+          )}
           {
             gameStarted && (
               <CanvasBoard roomId={roomId}  isDrawing={isDrawing} />
@@ -235,11 +252,25 @@ socket.on("round-end", ({ word }) => {
             </div>
       </div>
       {roundEndData && (
-  <RoundEndOverlay
-    word={roundEndData.word}
-    players={roundEndData.players}
-  />
-)}
+        <RoundEndOverlay
+          word={roundEndData.word}
+          players={roundEndData.players}
+        />
+
+        
+      )}
+  {gameOver && (
+    <GameOverScreen
+      players={gameOver.players}
+      roomId={roomId}
+      isHost={isHost}
+      onRestart={() => {
+        setGameOver(null);
+        setRoundInfo(null);
+      }}
+      onClose={() => setGameOver(null)} 
+    />
+  )}
     </div>
   );
 }

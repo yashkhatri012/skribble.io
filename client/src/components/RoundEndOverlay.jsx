@@ -27,7 +27,7 @@ export default function RoundEndOverlay({ word, players }) {
         </div>
 
         {/* Countdown hint */}
-        <p className="text-zinc-500 text-xs mt-5">Next round starting in 10s...</p>
+        <p className="text-zinc-500 text-xs mt-5">Next round starting in 3s...</p>
       </div>
     </div>
   );

@@ -35,6 +35,11 @@ function startTurn(io, roomId) {
 
   io.to(drawer.id).emit("word-options", { options });
   io.to(roomId).emit("game-started", { drawer });
+
+  io.to(roomId).emit("round-info", {
+    currentRound: room.currentRound,
+    totalRounds: room.totalRounds,
+  });
 }
 
 io.on("connection", (socket) => {
@@ -96,7 +101,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("start-game", ({ roomId }) => {
+    rooms[roomId].players.forEach((p) => (p.score = 0));
+
     rooms[roomId].currentDrawerIndex = 0;
+    rooms[roomId].currentRound = 1;
+    rooms[roomId].totalRounds = 2;
+    rooms[roomId].turnsThisRound = 0;
     startTurn(io, roomId);
   });
 
@@ -128,6 +138,21 @@ io.on("connection", (socket) => {
 
         // 👇 Advance to the next drawer
         const room = rooms[roomId];
+        room.turnsThisRound++;
+
+        // Check if everyone has drawn this round
+        if (room.turnsThisRound >= room.players.length) {
+          room.turnsThisRound = 0;
+          room.currentRound++;
+
+          // Check if all rounds are done
+          if (room.currentRound > room.totalRounds) {
+            setTimeout(() => {
+              io.to(roomId).emit("game-over", { players: room.players });
+            }, 3000);
+            return; //  stop here, don't start a new turn
+          }
+        }
         room.currentDrawerIndex =
           (room.currentDrawerIndex + 1) % room.players.length;
 
@@ -143,6 +168,11 @@ io.on("connection", (socket) => {
   socket.on("message", ({ roomId, username, text }) => {
     const room = rooms[roomId];
     const currentWord = room?.currentWord;
+    //prevent drawer from guessing
+    if (room?.currentDrawer?.id === socket.id) {
+      io.to(roomId).emit("message", { username, text });
+      return;
+    }
 
     // Check if it's a correct guess
     if (currentWord && text.toLowerCase() === currentWord.toLowerCase()) {
