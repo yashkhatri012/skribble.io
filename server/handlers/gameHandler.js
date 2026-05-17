@@ -7,7 +7,7 @@ export function registerGameHandlers(io, socket) {
 
     rooms[roomId].currentDrawerIndex = 0;
     rooms[roomId].currentRound = 1;
-    rooms[roomId].totalRounds = 2;
+    rooms[roomId].totalRounds = 3;
     rooms[roomId].turnsThisRound = 0;
     startTurn(io, roomId);
   });
@@ -15,7 +15,7 @@ export function registerGameHandlers(io, socket) {
 
   socket.on("word-chosen", ({ roomId, word }) => {
     rooms[roomId].currentWord = word;
-    rooms[roomId].timeRemaining = 5;
+    rooms[roomId].timeRemaining = 60;
     rooms[roomId].guessCount = 0;
     console.log("word chosen:", word);
     const masked = word

@@ -8,12 +8,11 @@ import GameOverScreen from "../components/GameOverScreen";
 import PlayerList from "../components/game/PlayerList";
 import DrawingArea from "../components/game/DrawingArea";
 
-function GamePage() {
+export default function GamePage() {
   const { roomId } = useParams();
   const { state } = useLocation();
   const username = state?.username || "Anonymous";
 
-  // ── State ────────────────────────────────────────────────────────────────
   const [players, setPlayers] = useState([]);
   const [currentDrawer, setCurrentDrawer] = useState(null);
   const [wordOptions, setWordOptions] = useState([]);
@@ -26,54 +25,35 @@ function GamePage() {
   const [gameOver, setGameOver] = useState(null);
   const [messages, setMessages] = useState([]);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
   const isHost = players.find((p) => p.id === socket.id)?.isHost;
   const isDrawing = currentDrawer?.id === socket.id;
 
-  // ── Socket: chat messages ─────────────────────────────────────────────────
   useEffect(() => {
-    socket.on("message", ({ username, text }) => {
-      setMessages((prev) => [...prev, { username, text }]);
-    });
+    socket.on("message", ({ username, text }) =>
+      setMessages((prev) => [...prev, { username, text }])
+    );
     return () => socket.off("message");
   }, []);
 
-  // ── Socket: game events ───────────────────────────────────────────────────
   useEffect(() => {
     socket.connect();
-
-    socket.on("connect", () => {
-      console.log("Connected:", socket.id);
-      socket.emit("join-room", { roomId, username });
-    });
-
+    socket.on("connect", () => socket.emit("join-room", { roomId, username }));
     socket.on("room-update", ({ players }) => setPlayers(players));
-
     socket.on("game-started", ({ drawer }) => {
       setGameStarted(true);
       setGameOver(null);
       setCurrentDrawer(drawer);
     });
-
     socket.on("word-options", ({ options }) => setWordOptions(options));
-
     socket.on("masked-word", ({ masked }) => setMaskedWord(masked));
-
     socket.on("actual-word", ({ word }) => setActualWord(word));
-
-    socket.on("correct-guess", ({ username }) => {
-      setMessages((prev) => [
-        ...prev,
-        { username, text: "✅ guessed the word!", type: "correct" },
-      ]);
-    });
-
+    socket.on("correct-guess", ({ username }) =>
+      setMessages((prev) => [...prev, { username, text: "✅ guessed the word!", type: "correct" }])
+    );
     socket.on("timer", ({ timeRemaining }) => setTimeRemaining(timeRemaining));
-
     socket.on("round-info", ({ currentRound, totalRounds }) =>
       setRoundInfo({ currentRound, totalRounds })
     );
-
     socket.on("round-end", ({ word }) => {
       setMaskedWord("");
       setActualWord("");
@@ -85,41 +65,45 @@ function GamePage() {
       setRoundEndData({ word, players: [...players] });
       setTimeout(() => setRoundEndData(null), 3000);
     });
-
     socket.on("game-over", ({ players }) => setGameOver({ players }));
 
     return () => {
-      socket.off("connect");
-      socket.off("room-update");
-      socket.off("draw");
-      socket.off("game-started");
-      socket.off("word-options");
-      socket.off("masked-word");
-      socket.off("actual-word");
-      socket.off("correct-guess");
-      socket.off("round-info");
-      socket.off("round-end");
-      socket.off("game-over");
+      ["connect","room-update","draw","game-started","word-options",
+       "masked-word","actual-word","correct-guess","round-info","round-end","game-over"]
+        .forEach((e) => socket.off(e));
       socket.disconnect();
     };
   }, [roomId]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleWordChosen = (word) => {
     socket.emit("word-chosen", { roomId, word });
     setWordOptions([]);
   };
 
-  // ── Layout ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col items-center p-4">
-      {/* Three-column game layout */}
-      <div className="flex gap-4 w-full max-w-6xl">
+    <div className="min-h-screen bg-stone-100 p-3 md:p-5 font-sans">
+      {/* Header */}
+      <header className="max-w-[1220px] mx-auto mb-4 flex items-center justify-between">
+        <span className="text-xl font-extrabold tracking-tight text-stone-900">
+          draw<span className="text-indigo-500">it</span>
+        </span>
+        {roundInfo && gameStarted && (
+          <span className="text-xs font-semibold text-stone-500 bg-stone-200 px-3 py-1 rounded-full tracking-wide font-mono">
+            Round {roundInfo.currentRound} / {roundInfo.totalRounds}
+          </span>
+        )}
+      </header>
 
-        {/* LEFT — player list */}
-        <PlayerList players={players} username={username} roomId={roomId} />
+      {/* Mobile: stack vertically. Desktop: 3 columns */}
+      <div className="max-w-[1220px] mx-auto flex flex-col lg:flex-row gap-3 items-start">
 
-        {/* CENTER — canvas + controls */}
+        {/* Top row on mobile: players + chat side by side */}
+        <div className="flex gap-3 w-full lg:hidden">
+          <PlayerList players={players} username={username} roomId={roomId} />
+          <ChatBox roomId={roomId} username={username} messages={messages} mobile />
+        </div>
+
+        {/* Center: canvas (full width on mobile) */}
         <DrawingArea
           roomId={roomId}
           isDrawing={isDrawing}
@@ -133,29 +117,25 @@ function GamePage() {
           onWordChosen={handleWordChosen}
         />
 
-        {/* RIGHT — chat */}
-        <ChatBox roomId={roomId} username={username} messages={messages} />
+        {/* Desktop sidebar: players + chat */}
+        <div className="hidden lg:flex flex-col gap-3">
+          <PlayerList players={players} username={username} roomId={roomId} />
+          <ChatBox roomId={roomId} username={username} messages={messages} />
+        </div>
       </div>
 
-      {/* Overlays */}
       {roundEndData && (
         <RoundEndOverlay word={roundEndData.word} players={roundEndData.players} />
       )}
-
       {gameOver && (
         <GameOverScreen
           players={gameOver.players}
           roomId={roomId}
           isHost={isHost}
-          onRestart={() => {
-            setGameOver(null);
-            setRoundInfo(null);
-          }}
+          onRestart={() => { setGameOver(null); setRoundInfo(null); }}
           onClose={() => setGameOver(null)}
         />
       )}
     </div>
   );
 }
-
-export default GamePage;

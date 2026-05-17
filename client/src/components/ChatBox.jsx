@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket/socket";
 
-export default function ChatBox({ roomId, username , messages }) {
- 
+export default function ChatBox({ roomId, username, messages, mobile = false }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
-useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const sendMessage = () => {
     if (!input.trim()) return;
@@ -16,43 +16,52 @@ useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, 
   };
 
   return (
-    <div className="w-80 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-col h-125 shadow-xl overflow-hidden font-sans">
-      
-      {/* Header (Shadcn style) */}
-      <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
-        <h3 className="text-sm font-medium text-zinc-100 tracking-tight">Room Chat</h3>
+    <div className={`bg-white rounded-2xl shadow-sm border border-stone-100 flex flex-col overflow-hidden
+      ${mobile ? "flex-1 h-48" : "w-64 shrink-0 h-100"}`}>
+      {/* Header */}
+      <div className="px-3 md:px-4 py-2 md:py-3 border-b border-stone-100 flex items-center justify-between shrink-0">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
+          Chat
+        </span>
+        <span className="w-2 h-2 rounded-full bg-green-400 ring-2 ring-green-100" />
       </div>
 
-      {/* Message list */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-2 md:p-3 flex flex-col gap-1 md:gap-1.5">
+        {messages.length === 0 && (
+          <p className="text-[11px] text-stone-300 text-center mt-3">
+            No messages yet!
+          </p>
+        )}
         {messages.map((msg, i) => (
-        <div key={i} className="text-sm leading-relaxed wrap-break-word">
-          <span className="text-zinc-400 font-medium mr-1.5">{msg.username}:</span>
-          <span className={msg.type === "correct" ? "text-green-400 font-bold" : "text-zinc-200"}>
-            {msg.text}
-          </span>
-        </div>
-      ))}
+          <div key={i} className="flex flex-col gap-0.5 bg-stone-50 px-2 md:px-3 py-1.5 md:py-2 rounded-xl">
+            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              {msg.username}
+            </span>
+            <span className={`text-[12px] md:text-[13px] leading-snug wrap-break-word ${
+              msg.type === "correct" ? "text-green-600 font-semibold" : "text-stone-700"
+            }`}>
+              {msg.text}
+            </span>
+          </div>
+        ))}
         <div ref={bottomRef} />
-
-        
-        
       </div>
 
-      {/* Input section */}
-      <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 flex gap-2 items-center">
+      {/* Input */}
+      <div className="p-2 md:p-3 border-t border-stone-100 flex gap-1.5 md:gap-2 items-center shrink-0">
         <input
-          className="flex-1 h-9 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 placeholder:text-zinc-500 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 h-8 md:h-9 rounded-xl border border-stone-200 bg-stone-50 px-2 md:px-3 text-[12px] md:text-[13px] text-stone-900 placeholder:text-stone-300 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type a guess..."
+          placeholder="Type a guess…"
         />
         <button
           onClick={sendMessage}
-          className="h-9 inline-flex items-center justify-center rounded-md bg-zinc-100 px-4 text-sm font-medium text-zinc-900 shadow transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+          className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-sm md:text-base flex items-center justify-center shrink-0 transition-colors shadow-sm shadow-indigo-200"
         >
-          Send
+          ↑
         </button>
       </div>
     </div>

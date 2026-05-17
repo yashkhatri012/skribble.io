@@ -2,7 +2,7 @@ import CanvasBoard from "../CanvasBoard";
 import GameControls from "./GameControls";
 import WordDisplay from "./WordDisplay";
 
-function DrawingArea({
+export default function DrawingArea({
   roomId,
   isDrawing,
   isHost,
@@ -11,12 +11,10 @@ function DrawingArea({
   maskedWord,
   actualWord,
   timeRemaining,
-  roundInfo,
   onWordChosen,
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center gap-3">
-      {/* Controls: start button or word picker — shown above canvas */}
+    <div className="flex-1 flex flex-col items-center gap-2 md:gap-3 w-full min-w-0">
       <GameControls
         isHost={isHost}
         gameStarted={gameStarted}
@@ -25,27 +23,26 @@ function DrawingArea({
         onWordChosen={onWordChosen}
       />
 
-      {/* Word + timer + round info */}
       <WordDisplay
         maskedWord={maskedWord}
         actualWord={actualWord}
         isDrawing={isDrawing}
         timeRemaining={timeRemaining}
-        roundInfo={roundInfo}
         gameStarted={gameStarted}
       />
 
-      {/* Canvas */}
-      {gameStarted && <CanvasBoard roomId={roomId} isDrawing={isDrawing} />}
-
-      {/* Waiting state */}
-      {!gameStarted && wordOptions.length === 0 && !isHost && (
-        <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
-          Waiting for the host to start the game…
+      {gameStarted ? (
+        <div className="w-full rounded-2xl overflow-hidden shadow-md border border-stone-200 bg-white leading-none">
+          <CanvasBoard roomId={roomId} isDrawing={isDrawing} />
         </div>
+      ) : (
+        wordOptions.length === 0 && !isHost && (
+          <div className="flex items-center gap-2 mt-8 md:mt-16 text-stone-400 text-sm font-medium">
+            <span className="w-2 h-2 rounded-full bg-stone-300 animate-pulse inline-block" />
+            Waiting for the host to start…
+          </div>
+        )
       )}
     </div>
   );
 }
-
-export default DrawingArea;
