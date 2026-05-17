@@ -7,7 +7,10 @@ import { registerGameHandlers } from "./handlers/gameHandler.js";
 export function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: [
+      "http://localhost:5173",
+      "https://skribble-io7.vercel.app"
+    ],
       methods: ["GET", "POST"],
     },
   });
