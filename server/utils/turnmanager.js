@@ -8,6 +8,8 @@ export function startTurn(io, roomId) {
   const drawer = room.players[room.currentDrawerIndex];
   room.currentDrawer = drawer;
   room.currentWord = null;
+   room.maskedWord = null;    
+  room.gameActive = true;    
 
   const shuffled = [...wordList].sort(() => Math.random() - 0.5);
   const options = shuffled.slice(0, 3);

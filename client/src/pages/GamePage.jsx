@@ -24,10 +24,10 @@ export default function GamePage() {
   const [roundEndData, setRoundEndData] = useState(null);
   const [gameOver, setGameOver] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [socketId, setSocketId] = useState(null);  
 
-  const isHost = players.find((p) => p.id === socket.id)?.isHost;
-  const isDrawing = currentDrawer?.id === socket.id;
-
+const isHost = players.find((p) => p.id === socketId)?.isHost;  
+const isDrawing = currentDrawer?.id === socketId && wordOptions.length === 0; 
   useEffect(() => {
     socket.on("message", ({ username, text }) =>
       setMessages((prev) => [...prev, { username, text }])
@@ -37,7 +37,10 @@ export default function GamePage() {
 
   useEffect(() => {
     socket.connect();
-    socket.on("connect", () => socket.emit("join-room", { roomId, username }));
+    socket.on("connect", () => {
+    setSocketId(socket.id);  
+    socket.emit("join-room", { roomId, username });
+  });
     socket.on("room-update", ({ players }) => setPlayers(players));
     socket.on("game-started", ({ drawer }) => {
       setGameStarted(true);
@@ -83,9 +86,9 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-stone-100 p-3 md:p-5 font-sans">
       {/* Header */}
-      <header className="max-w-[1220px] mx-auto mb-4 flex items-center justify-between">
+      <header className="max-w-305 mx-auto mb-4 flex items-center justify-between">
         <span className="text-xl font-extrabold tracking-tight text-stone-900">
-          draw<span className="text-indigo-500">it</span>
+          Skribble<span className="text-indigo-500">.io</span>
         </span>
         {roundInfo && gameStarted && (
           <span className="text-xs font-semibold text-stone-500 bg-stone-200 px-3 py-1 rounded-full tracking-wide font-mono">
@@ -94,16 +97,16 @@ export default function GamePage() {
         )}
       </header>
 
-      {/* Mobile: stack vertically. Desktop: 3 columns */}
-      <div className="max-w-[1220px] mx-auto flex flex-col lg:flex-row gap-3 items-start">
+      
+      <div className="max-w-305 mx-auto flex flex-col lg:flex-row gap-3 items-start">
 
-        {/* Top row on mobile: players + chat side by side */}
+        {/* mobile */}
         <div className="flex gap-3 w-full lg:hidden">
           <PlayerList players={players} username={username} roomId={roomId} />
           <ChatBox roomId={roomId} username={username} messages={messages} mobile />
         </div>
 
-        {/* Center: canvas (full width on mobile) */}
+        
         <DrawingArea
           roomId={roomId}
           isDrawing={isDrawing}
@@ -117,7 +120,7 @@ export default function GamePage() {
           onWordChosen={handleWordChosen}
         />
 
-        {/* Desktop sidebar: players + chat */}
+        {/* laptop */}
         <div className="hidden lg:flex flex-col gap-3">
           <PlayerList players={players} username={username} roomId={roomId} />
           <ChatBox roomId={roomId} username={username} messages={messages} />

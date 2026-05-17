@@ -17,6 +17,8 @@ export function registerGameHandlers(io, socket) {
     rooms[roomId].currentWord = word;
     rooms[roomId].timeRemaining = 60;
     rooms[roomId].guessCount = 0;
+    rooms[roomId].gameActive = true;
+
     console.log("word chosen:", word);
     const masked = word
       .split("")
@@ -25,6 +27,7 @@ export function registerGameHandlers(io, socket) {
 
     // Send real word only to drawer, masked to everyone else
     io.to(roomId).emit("masked-word", { masked });
+    rooms[roomId].maskedWord = masked;
     io.to(rooms[roomId].currentDrawer.id).emit("actual-word", { word });
 
     const timer = setInterval(() => {
@@ -36,10 +39,11 @@ export function registerGameHandlers(io, socket) {
       if (rooms[roomId].timeRemaining <= 0) {
         clearInterval(timer);
         rooms[roomId].currentWord = null;
+        rooms[roomId].maskedWord = null;
 
         io.to(roomId).emit("round-end", { word });
 
-        // 👇 Advance to the next drawer
+        //  Advance to the next drawer
         const room = rooms[roomId];
         room.turnsThisRound++;
 
@@ -51,9 +55,10 @@ export function registerGameHandlers(io, socket) {
           // Check if all rounds are done
           if (room.currentRound > room.totalRounds) {
             setTimeout(() => {
+              room.gameActive = false;
               io.to(roomId).emit("game-over", { players: room.players });
             }, 3000);
-            return; //  stop here, don't start a new turn
+            return; 
           }
         }
         room.currentDrawerIndex =

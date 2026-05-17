@@ -31,7 +31,7 @@ export default function DrawingArea({
         gameStarted={gameStarted}
       />
 
-      {gameStarted ? (
+      {gameStarted    ? (
         <div className="w-full rounded-2xl overflow-hidden shadow-md border border-stone-200 bg-white leading-none">
           <CanvasBoard roomId={roomId} isDrawing={isDrawing} />
         </div>

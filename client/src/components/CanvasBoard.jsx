@@ -22,11 +22,16 @@ export default function CanvasBoard({roomId , isDrawing}) {
       ref={canvasRef}
       width={800}
       height={500}
+      style={{ touchAction: "none" }} 
       className={`border border-black ${!isDrawing ? "cursor-default" : "cursor-crosshair"}`}
       onMouseDown={isDrawing ? startDrawing : undefined}
       onMouseUp={isDrawing ? stopDrawing : undefined}
       onMouseLeave={isDrawing ? stopDrawing : undefined}
       onMouseMove={isDrawing ? draw : undefined}
+      onTouchStart={isDrawing ? startDrawing : undefined}
+        onTouchEnd={isDrawing ? stopDrawing : undefined}
+        onTouchCancel={isDrawing ? stopDrawing : undefined}
+        onTouchMove={isDrawing ? draw : undefined}
     />
   </>
 );

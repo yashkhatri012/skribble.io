@@ -13,9 +13,9 @@ export function registerCanvasHandlers(io, socket){
   });
 
   socket.on("stroke-end", ({ roomId }) => {
-    // Signal that current stroke group is complete — start a new group next draw
+    // Signal that current stroke group is complete start a new group next draw
     if (roomStrokes[roomId]) {
-      roomStrokes[roomId].push([]); // new empty group ready
+      roomStrokes[roomId].push([]); // new empty group 
     }
   });
 

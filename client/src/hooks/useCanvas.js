@@ -3,11 +3,38 @@ import { drawLine } from "../utils/drawLine";
 import { socket } from "../socket/socket";
 
 export default function useCanvas(canvasRef, roomId) {
-  
   const isDrawing = useRef(false);
   const prevPos = useRef({ x: 0, y: 0 });
   const strokes = useRef([]);
   const currentStroke = useRef([]);
+
+  
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+   
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    if (e.touches) {
+      // Touch event
+      const touch = e.touches[0];
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+      };
+    }
+
+    // Mouse event
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -18,25 +45,20 @@ export default function useCanvas(canvasRef, roomId) {
     ctx.strokeStyle = "black";
 
     socket.on("draw", ({ stroke }) => {
-      const ctx = canvasRef.current.getContext("2d");
-      drawLine(ctx, stroke);
+      drawLine(canvasRef.current.getContext("2d"), stroke);
     });
 
     socket.on("clear-canvas", () => {
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
       strokes.current = [];
     });
 
-    
     const redrawCanvas = () => {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      strokes.current.forEach((strokeGroup) => {
-        strokeGroup.forEach((stroke) => drawLine(ctx, stroke));
-      });
+      strokes.current.forEach((group) => group.forEach((s) => drawLine(ctx, s)));
     };
 
     socket.on("undo", ({ updatedStrokes }) => {
@@ -44,78 +66,89 @@ export default function useCanvas(canvasRef, roomId) {
       redrawCanvas();
     });
 
-    
-socket.on("canvas-state", ({ strokes: incomingStrokes }) => {
-  strokes.current = incomingStrokes.filter(g => g.length > 0);
-  redrawCanvas();
-});
+    socket.on("canvas-state", ({ strokes: incoming }) => {
+      strokes.current = incoming.filter((g) => g.length > 0);
+      redrawCanvas();
+    });
 
-  return () => {
-    socket.off("draw");
-    socket.off("clear-canvas");
-    socket.off("undo");
-    socket.off("canvas-state"); 
-  };
+    return () => {
+      socket.off("draw");
+      socket.off("clear-canvas");
+      socket.off("undo");
+      socket.off("canvas-state");
+    };
   }, []);
 
+  useEffect(() => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+
+  const handleTouchStart = (e) => { e.preventDefault(); };
+  const handleTouchMove  = (e) => { e.preventDefault(); };
+
+  canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+  canvas.addEventListener("touchmove",  handleTouchMove,  { passive: false });
+
+  return () => {
+    canvas.removeEventListener("touchstart", handleTouchStart);
+    canvas.removeEventListener("touchmove",  handleTouchMove);
+  };
+}, []);
+
+
+  
   const startDrawing = (e) => {
-    isDrawing.current = true; 
+    e.preventDefault(); 
+    isDrawing.current = true;
     currentStroke.current = [];
-    prevPos.current = {
-      x: e.nativeEvent.offsetX,
-      y: e.nativeEvent.offsetY,
-    };
+    prevPos.current = getPos(e);
   };
 
-  const stopDrawing = () => {
+  
+  const stopDrawing = (e) => {
+    e?.preventDefault();
     if (!isDrawing.current) return;
-    isDrawing.current = false; // ✅ ref write — synchronous
+    isDrawing.current = false;
     if (currentStroke.current.length > 0) {
-      strokes.current.push([...currentStroke.current]); // ✅ copy the array
+      strokes.current.push([...currentStroke.current]);
       currentStroke.current = [];
     }
-
-
-    //Tell server stroke group is done
-     socket.emit("stroke-end", { roomId });
+    socket.emit("stroke-end", { roomId });
   };
 
+  
   const draw = (e) => {
-    if (!isDrawing.current) return; // ✅ always reads latest value
+    e.preventDefault();
+    if (!isDrawing.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
-    const currentX = e.nativeEvent.offsetX;
-    const currentY = e.nativeEvent.offsetY;
+    const { x, y } = getPos(e);
 
     const stroke = {
       x1: prevPos.current.x,
       y1: prevPos.current.y,
-      x2: currentX,
-      y2: currentY,
+      x2: x,
+      y2: y,
     };
 
     drawLine(ctx, stroke);
     socket.emit("draw", { roomId, stroke });
     currentStroke.current.push(stroke);
-
-    prevPos.current = { x: currentX, y: currentY };
+    prevPos.current = { x, y };
   };
 
+  
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    strokes.current.forEach((strokeGroup) => {
-      strokeGroup.forEach((stroke) => drawLine(ctx, stroke));
-    });
+    strokes.current.forEach((group) => group.forEach((s) => drawLine(ctx, s)));
   };
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     strokes.current = [];
     socket.emit("clear-canvas", roomId);
   };
@@ -124,10 +157,7 @@ socket.on("canvas-state", ({ strokes: incomingStrokes }) => {
     if (strokes.current.length === 0) return;
     strokes.current.pop();
     redrawCanvas();
-    socket.emit("undo", {
-      roomId,
-      updatedStrokes: strokes.current,
-    });
+    socket.emit("undo", { roomId, updatedStrokes: strokes.current });
   };
 
   return { startDrawing, stopDrawing, draw, clearCanvas, undoLastStroke };

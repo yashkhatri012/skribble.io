@@ -25,7 +25,7 @@ export function registerChatHandlers(io, socket) {
       io.to(roomId).emit("correct-guess", { username });
       io.to(roomId).emit("room-update", { players: room.players });
     } else {
-      // Just a normal message
+      //  normal message
       io.to(roomId).emit("message", { username, text });
     }
   });
