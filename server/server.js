@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import { initSocket } from "./socket.js";
 import cors from "cors";
+import { startKeepAliveJob } from "./jobs/KeepBackendFromSleeping.js";
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use(cors({
   credentials: true
 }));
 
+startKeepAliveJob()
 app.get("/", (req, res) => res.send("Server running"));
 
 const server = http.createServer(app);
